@@ -36,11 +36,13 @@ public class ClientBetterUpperCaseUDP {
     }
     var buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
     buffer.putInt(charsetName.length());
-    buffer.put(ASCII_CHARSET.encode(charsetName));
+    var charsetNameBuffer = ASCII_CHARSET.encode(charsetName);
+
     var b = Charset.forName(charsetName).encode(msg);
-    if (buffer.remaining() + b.remaining() > MAX_PACKET_SIZE){
+    if (buffer.remaining() + charsetNameBuffer.remaining() + b.remaining() > MAX_PACKET_SIZE){
       return Optional.empty();
     }
+    buffer.put(charsetNameBuffer);
     buffer.put(b);
     return Optional.of(buffer);
   }
@@ -66,10 +68,9 @@ public class ClientBetterUpperCaseUDP {
 
     var charsetNameSize = buffer.getInt();
 
-    if (charsetNameSize <= 0 || charsetNameSize > buffer.remaining()){
+    if (charsetNameSize == -1 || charsetNameSize > buffer.remaining()){
       return Optional.empty();
     }
-
 
     var newLimit = buffer.limit();
     buffer.limit(charsetNameSize + Integer.BYTES );

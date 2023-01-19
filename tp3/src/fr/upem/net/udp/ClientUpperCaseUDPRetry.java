@@ -35,7 +35,7 @@ public class ClientUpperCaseUDPRetry {
 
       var queue = new ArrayBlockingQueue<String>(10);
 
-      Thread.ofPlatform().start(() -> {
+      var thread = Thread.ofPlatform().start(() -> {
         while (!Thread.interrupted()) {
           try {
             buffer.clear();
@@ -43,10 +43,10 @@ public class ClientUpperCaseUDPRetry {
             buffer.flip();
             var msg = cs.decode(buffer).toString();
             queue.put(msg);
-          } catch (IOException e) {
-            logger.log(Level.WARNING, "receive exception", e);
           } catch (InterruptedException e) {
-            logger.log(Level.WARNING, "put in blockingQueue exception", e);
+            logger.info("InterruptedException");
+          } catch (IOException e) {
+            logger.log(Level.SEVERE, "receive exception", e);
           }
 
         }
@@ -55,19 +55,20 @@ public class ClientUpperCaseUDPRetry {
       while (scanner.hasNextLine()) {
         var line = scanner.nextLine();
         var sendBuffer = cs.encode(line);
-        logger.info("The message is " + line);
         dc.send(sendBuffer, server);
-        logger.info("The message was send");
+        logger.info("The send message was " + line);
         var msg = queue.poll(1, TimeUnit.SECONDS);
         while (msg == null){
-          var sendBufferLost = cs.encode(line);
-          logger.warning("The message is lost");
-          dc.send(sendBufferLost, server);
+          sendBuffer = cs.encode(line);
+          logger.info("The message is lost, restart send the message " + line);
+          dc.send(sendBuffer, server);
           msg = queue.poll(1, TimeUnit.SECONDS);
         }
         logger.info("Received " + msg);
-
       }
+
+      thread.interrupt();
+
     }
   }
 }

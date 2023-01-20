@@ -75,7 +75,7 @@ public class ClientUpperCaseUDPFile {
         logger.info("The send message was " + line);
         var msg = queue.poll(timeout, TimeUnit.MILLISECONDS);
         while (msg == null){
-          sendBuffer = UTF8.encode(line);
+          sendBuffer.position(0);
           logger.info("The message is lost, restart send the message " + line);
           dc.send(sendBuffer, server);
           msg = queue.poll(timeout, TimeUnit.MILLISECONDS);

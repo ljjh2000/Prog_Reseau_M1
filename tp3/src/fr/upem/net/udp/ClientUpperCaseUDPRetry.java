@@ -3,6 +3,7 @@ package fr.upem.net.udp;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.Charset;
 import java.util.Scanner;
@@ -43,7 +44,7 @@ public class ClientUpperCaseUDPRetry {
             buffer.flip();
             var msg = cs.decode(buffer).toString();
             queue.put(msg);
-          } catch (InterruptedException e) {
+          } catch (InterruptedException | ClosedByInterruptException e) {
             logger.info("InterruptedException");
           } catch (IOException e) {
             logger.log(Level.SEVERE, "receive exception", e);
@@ -59,7 +60,8 @@ public class ClientUpperCaseUDPRetry {
         logger.info("The send message was " + line);
         var msg = queue.poll(1, TimeUnit.SECONDS);
         while (msg == null){
-          sendBuffer = cs.encode(line);
+          //sendBuffer = cs.encode(line);
+          sendBuffer.position(0);
           logger.info("The message is lost, restart send the message " + line);
           dc.send(sendBuffer, server);
           msg = queue.poll(1, TimeUnit.SECONDS);

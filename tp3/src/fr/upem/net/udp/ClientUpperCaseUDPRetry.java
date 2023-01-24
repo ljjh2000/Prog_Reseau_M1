@@ -45,9 +45,11 @@ public class ClientUpperCaseUDPRetry {
             var msg = cs.decode(buffer).toString();
             queue.put(msg);
           } catch (InterruptedException | ClosedByInterruptException e) {
-            logger.info("InterruptedException");
+            logger.info("Thread stop");
+            return;
           } catch (IOException e) {
-            logger.log(Level.SEVERE, "receive exception", e);
+            logger.log(Level.SEVERE, "IOException ", e);
+            return;
           }
 
         }
@@ -61,7 +63,8 @@ public class ClientUpperCaseUDPRetry {
         var msg = queue.poll(1, TimeUnit.SECONDS);
         while (msg == null){
           //sendBuffer = cs.encode(line);
-          sendBuffer.position(0);
+          //sendBuffer.position(0);
+          sendBuffer.flip();
           logger.info("The message is lost, restart send the message " + line);
           dc.send(sendBuffer, server);
           msg = queue.poll(1, TimeUnit.SECONDS);

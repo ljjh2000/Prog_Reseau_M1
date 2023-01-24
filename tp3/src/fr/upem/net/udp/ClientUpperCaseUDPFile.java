@@ -64,6 +64,7 @@ public class ClientUpperCaseUDPFile {
             return;
           }  catch (IOException e) {
             logger.log(Level.SEVERE, "receive exception", e);
+            return;
           }
 
         }

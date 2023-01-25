@@ -115,6 +115,8 @@ public class ClientIdUpperCaseUDPBurst {
 
 
     senderThread.interrupt();
+
+
     Files.write(Paths.get(outFilename),Arrays.asList(upperCaseLines), UTF8,
             StandardOpenOption.CREATE,
             StandardOpenOption.WRITE,
@@ -144,11 +146,10 @@ public class ClientIdUpperCaseUDPBurst {
   }
 
   private static class AnswersLog {
-
-    // TODO Thread-safe class handling the information about missing lines
-
     private final BitSet bitSet;
     private final int capacity;
+
+    private final Object lock = new Object();
 
     public AnswersLog(int nb) {
       this.bitSet = new BitSet(nb);
@@ -156,15 +157,21 @@ public class ClientIdUpperCaseUDPBurst {
     }
 
     public boolean isPresent(int index){
-      return bitSet.get(index);
+      synchronized (lock){
+        return bitSet.get(index);
+      }
     }
 
     public boolean isComplete(){
-      return bitSet.cardinality() == capacity;
+      synchronized (lock) {
+        return bitSet.cardinality() == capacity;
+      }
     }
 
     public void set(int index){
-      bitSet.set(index);
+      synchronized (lock){
+        bitSet.set(index);
+      }
     }
   }
 }

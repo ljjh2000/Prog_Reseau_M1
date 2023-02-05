@@ -44,14 +44,15 @@ public class ClientEOS {
 
     var buffer = ByteBuffer.allocate(bufferSize);
 
-    if (sc.read(buffer) == -1){
-      logger.warning("On ne lit rien");
-      return "C'est pas normal :(";
+    while ((sc.read(buffer) == -1) ){
+      if (!buffer.hasRemaining()){
+        break;
+      }
     }
 
     buffer.flip();
 
-    sc.shutdownInput();
+    sc.close();
 
     return UTF8_CHARSET.decode(buffer).toString();
   }
@@ -87,13 +88,14 @@ public class ClientEOS {
     var msg = "";
 
     while (readFully(sc, buffer)){
-      msg = msg + UTF8_CHARSET.decode(buffer).toString();
+      var e = ByteBuffer.allocate(buffer.capacity() * 2);
+      e.put(buffer);
+      buffer = e;
     }
-    msg = msg + UTF8_CHARSET.decode(buffer).toString();
 
-    sc.shutdownInput();
+    sc.close();
 
-    return msg;
+    return UTF8_CHARSET.decode(buffer).toString();
   }
 
   /**
@@ -105,20 +107,18 @@ public class ClientEOS {
    * @throws IOException
    */
   static boolean readFully(SocketChannel sc, ByteBuffer buffer) throws IOException {
-    buffer.clear();
+
     while (buffer.hasRemaining()){
       if (sc.read(buffer) == -1){
-        buffer.flip();
         return false;
       }
     }
-    buffer.flip();
     return true;
   }
 
   public static void main(String[] args) throws IOException {
     var google = new InetSocketAddress("www.google.fr", 80);
     System.out.println(getFixedSizeResponse("GET / HTTP/1.1\r\nHost: www.google.fr\r\n\r\n", google, 512));
-    System.out.println(getUnboundedResponse("GET / HTTP/1.1\r\nHost: www.google.fr\r\n\r\n", google));
+    //System.out.println(getUnboundedResponse("GET / HTTP/1.1\r\nHost: www.google.fr\r\n\r\n", google));
   }
 }

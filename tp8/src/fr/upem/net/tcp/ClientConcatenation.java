@@ -4,72 +4,95 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.List;
-import java.util.Random;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.logging.Logger;
 
 public class ClientConcatenation {
 
   public static final Logger logger = Logger.getLogger(ClientConcatenation.class.getName());
 
-  private static List<Long> randomLongList(int size) {
-    return new Random().longs(size).boxed().toList();
-  }
+  public static final int BUFFER_SIZE = 1024;
 
-  private static boolean checkSum(List<Long> list, long response) {
-    return list.stream().reduce(Long::sum).orElse(0L) == response;
-  }
+  public static final Charset UTF8_CHARSET = StandardCharsets.UTF_8;
 
-  /**
-   * Write all the longs in list in BigEndian on the server and read the long sent
-   * by the server and returns it
-   *
-   * returns null if the protocol is not followed by the server but no
-   * IOException is thrown
-   *
-   * @param sc
-   * @param list
-   * @return
-   * @throws IOException
-   */
-  private static Long requestSumForList(SocketChannel sc, List<Long> list) throws IOException {
-
-    var buffer = ByteBuffer.allocate(Long.BYTES * list.size() + Integer.BYTES);
-
+  private static String requestConcatenation(SocketChannel sc, List<String> list) throws IOException {
+    var buffer = ByteBuffer.allocate(BUFFER_SIZE);
     buffer.putInt(list.size());
-    for(var l : list){
-      buffer.putLong(l);
+    /*for (var l : list){
+      buffer.putInt(l.length());
+      buffer.put(UTF8_CHARSET.encode(l));
+      buffer.flip();
+      sc.write(buffer);
+      buffer.clear();
     }
+
+     */
+
+    for (var i = 0; i < list.size();i++){
+      while (writeFully(buffer, list.get(i))){
+        buffer.flip();
+        sc.write(buffer);
+        buffer.clear();
+      }
+    }
+
     buffer.flip();
     sc.write(buffer);
 
-    var sumBuffer = ByteBuffer.allocate(Long.BYTES);
 
-    if (!readFully(sc, sumBuffer)){
-      logger.info("The receive packet is not correct");
+    var size = ByteBuffer.allocate(Integer.BYTES);
+    if (!readFully(sc, size)){
       return null;
     }
-
-    var sum = sumBuffer.getLong();
-    logger.info("sum is " + sum);
-    return sum;
+    size.flip();
+    var msg = ByteBuffer.allocate(size.getInt());
+    if (!readFully(sc, msg)){
+      return null;
+    }
+    msg.flip();
+    return UTF8_CHARSET.decode(msg).toString();
   }
 
   static boolean readFully(SocketChannel sc, ByteBuffer buffer) throws IOException {
     while (buffer.hasRemaining()){
       if (sc.read(buffer) == -1){
-        buffer.flip();
         return false;
       }
     }
-    buffer.flip();
     return true;
+  }
+
+  static boolean writeFully(ByteBuffer buffer, String chaine) throws IOException {
+    if (buffer.remaining() < Integer.BYTES + chaine.length()){
+      return true;
+    }
+    buffer.putInt(chaine.length());
+    buffer.put(UTF8_CHARSET.encode(chaine));
+    return false;
   }
 
   public static void main(String[] args) throws IOException {
     var server = new InetSocketAddress(args[0], Integer.parseInt(args[1]));
-    try (var sc = SocketChannel.open(server)) {
-
+    try (var sc = SocketChannel.open(server); var scanner = new Scanner(System.in)) {
+      List<String> list = new ArrayList<>();
+      while (scanner.hasNextLine()) {
+        var line = scanner.nextLine();
+        if (line.equals("")){
+          var answer = requestConcatenation(sc, list);
+          if (answer == null) {
+            logger.warning("Connection with server lost.");
+            return;
+          }
+          else {
+            System.out.println(String.join(",", list));
+          }
+          list = new ArrayList<>();
+        } else {
+          list.add(line);
+        }
+      }
       logger.info("Everything seems ok");
     }
   }

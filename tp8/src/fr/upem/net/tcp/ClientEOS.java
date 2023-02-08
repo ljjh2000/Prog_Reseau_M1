@@ -44,14 +44,13 @@ public class ClientEOS {
 
     var buffer = ByteBuffer.allocate(bufferSize);
 
-    while ((sc.read(buffer) == -1) ){
+    while (sc.read(buffer) != -1 ){
       if (!buffer.hasRemaining()){
         break;
       }
     }
 
     buffer.flip();
-
     sc.close();
 
     return UTF8_CHARSET.decode(buffer).toString();
@@ -88,12 +87,15 @@ public class ClientEOS {
     var msg = "";
 
     while (readFully(sc, buffer)){
+      buffer.flip();
       var e = ByteBuffer.allocate(buffer.capacity() * 2);
       e.put(buffer);
       buffer = e;
     }
 
     sc.close();
+
+    buffer.flip();
 
     return UTF8_CHARSET.decode(buffer).toString();
   }

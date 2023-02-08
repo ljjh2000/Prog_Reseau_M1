@@ -49,6 +49,8 @@ public class ClientLongSum {
       return null;
     }
 
+    sumBuffer.flip();
+
     var sum = sumBuffer.getLong();
     logger.info("sum is " + sum);
     return sum;
@@ -57,11 +59,9 @@ public class ClientLongSum {
   static boolean readFully(SocketChannel sc, ByteBuffer buffer) throws IOException {
     while (buffer.hasRemaining()){
       if (sc.read(buffer) == -1){
-        buffer.flip();
         return false;
       }
     }
-    buffer.flip();
     return true;
   }
 

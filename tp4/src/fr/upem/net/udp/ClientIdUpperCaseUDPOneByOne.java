@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -80,8 +79,6 @@ public class ClientIdUpperCaseUDPOneByOne {
       var lines = Files.readAllLines(Path.of(inFilename), UTF8);
 
       var upperCaseLines = new ArrayList<String>();
-
-      // TODO
 
       var sendBuffer = ByteBuffer.allocate(BUFFER_SIZE);
       for(var i = 0; i < lines.size(); i++){

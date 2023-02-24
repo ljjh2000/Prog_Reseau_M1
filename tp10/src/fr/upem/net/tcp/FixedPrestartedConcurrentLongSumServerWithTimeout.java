@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -54,8 +55,9 @@ public class FixedPrestartedConcurrentLongSumServerWithTimeout {
         Arrays.stream(threadData).forEach(t -> {
           try {
             t.closeIfInactive(timeout);
-          } catch (IOException e) {
-            logger.log(Level.INFO, "Connection terminated with client by IOException on closeIfInactive", e.getCause());
+            Thread.sleep(timeout / 4);
+          } catch (InterruptedException e) {
+            logger.log(Level.INFO, "Thread checkActive is interrupted", e.getCause());
           }
         });
       }
@@ -73,16 +75,17 @@ public class FixedPrestartedConcurrentLongSumServerWithTimeout {
             try {
               logger.info("Connection accepted from " + client.getRemoteAddress());
               serve(threadData[i]);
+            } catch (ClosedByInterruptException ioe) {
+              logger.log(Level.INFO, "interrupt while waiting for message", ioe.getCause());
             } catch (AsynchronousCloseException ioe) {
-              logger.log(Level.INFO, "AsynchronousCloseException", ioe.getCause());
+              logger.log(Level.INFO, "socketChannel is closed", ioe.getCause());
             } catch (IOException ioe) {
               logger.log(Level.INFO, "Connection terminated with client by IOException", ioe.getCause());
             } finally {
               threadData[i].close();
-              logger.info("client is closed");
             }
           } catch (IOException ioe) {
-            logger.log(Level.WARNING, "Connection terminated with client by IOException", ioe.getCause());
+            logger.log(Level.WARNING, "Serveur is interrupt", ioe.getCause());
             return;
           }
         }
@@ -103,28 +106,15 @@ public class FixedPrestartedConcurrentLongSumServerWithTimeout {
                 logger.info("Il y a " + Arrays.stream(threadData).filter(t-> t.getClient() != null).count() + " client connecté");
               }
               case "SHUTDOWN" -> {
-                Arrays.stream(threadData).forEach(t -> {
-                  try {
-                    t.close();
-                  } catch (IOException e) {
-                    // do nothing
-                  }
-                });
+                Arrays.stream(threadData).forEach(ThreadData::close);
               }
-
               case "SHUTDOWNNOW" -> {
-                Arrays.stream(threadData).forEach(t -> {
-                  try {
-                    t.close();
-                  } catch (IOException e) {
-                    // do nothing
-                  }
-                });
+                Arrays.stream(threadData).forEach(ThreadData::close);
                 checkActive.interrupt();
                 threadClients.forEach(Thread::interrupt);
               }
               default -> {
-                System.out.println("default");
+                logger.info("Not commande for " + l);
               }
             }
 
@@ -223,7 +213,7 @@ public class FixedPrestartedConcurrentLongSumServerWithTimeout {
     void setSocketChannel(SocketChannel client){
       synchronized (lock){
         if (this.client != null){
-          logger.info("Le thread a déjà accepter un client qui est encore active");
+          logger.info("Thread has a active client");
           return;
         }
         this.client = client;
@@ -237,7 +227,7 @@ public class FixedPrestartedConcurrentLongSumServerWithTimeout {
       }
     }
 
-    void closeIfInactive(int timeout) throws IOException {
+    void closeIfInactive(int timeout) {
       synchronized (lock){
         if (client == null){
           return;
@@ -254,7 +244,7 @@ public class FixedPrestartedConcurrentLongSumServerWithTimeout {
       }
     }
 
-    void close() throws IOException {
+    void close() {
       synchronized (lock){
         if (client != null) {
           try {

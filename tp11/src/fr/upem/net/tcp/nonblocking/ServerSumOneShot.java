@@ -89,19 +89,19 @@ public class ServerSumOneShot {
     buffer.flip();
     key.interestOps(SelectionKey.OP_WRITE);
     sum = buffer.getInt() + buffer.getInt();
+    buffer.clear();
+    buffer.putInt(sum);
+    buffer.flip();
   }
 
   private void doWrite(SelectionKey key) throws IOException {
     var sc = (SocketChannel) key.channel();
     var buffer = (ByteBuffer) key.attachment();
-    buffer.clear();
-    buffer.putInt(sum);
-    buffer.flip();
     sc.write(buffer);
     if (buffer.hasRemaining()){
       return;
     }
-    sc.close();
+    silentlyClose(key);
   }
 
   private void silentlyClose(SelectionKey key) {

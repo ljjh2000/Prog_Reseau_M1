@@ -14,12 +14,6 @@ public class ServerSumOneShot {
   private final ServerSocketChannel serverSocketChannel;
   private final Selector selector;
 
-  private final ByteBuffer readBuffer = ByteBuffer.allocate(BUFFER_SIZE);
-
-  private final ByteBuffer writeBuffer = ByteBuffer.allocate(Integer.BYTES);
-
-  private int sum;
-
   public ServerSumOneShot(int port) throws IOException {
     serverSocketChannel = ServerSocketChannel.open();
     serverSocketChannel.bind(new InetSocketAddress(port));
@@ -70,7 +64,7 @@ public class ServerSumOneShot {
       // auquel cas il faut attendre d'être à nouveau notifié
     } else {
       sc.configureBlocking(false);
-      key = sc.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(BUFFER_SIZE));
+      sc.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(BUFFER_SIZE));
     }
   }
 
@@ -88,7 +82,7 @@ public class ServerSumOneShot {
     }
     buffer.flip();
     key.interestOps(SelectionKey.OP_WRITE);
-    sum = buffer.getInt() + buffer.getInt();
+    var sum = buffer.getInt() + buffer.getInt();
     buffer.clear();
     buffer.putInt(sum);
     buffer.flip();
